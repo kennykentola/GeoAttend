@@ -5,6 +5,8 @@ import { ToastProvider } from './src/context/ToastContext';
 import ProtectedRoute from './src/components/common/ProtectedRoute';
 import Login from './src/pages/auth/Login';
 import Register from './src/pages/auth/Register';
+import ForgotPassword from './src/pages/auth/ForgotPassword';
+import ResetPassword from './src/pages/auth/ResetPassword';
 import TakeAttendance from './src/pages/student/TakeAttendance';
 import CourseDetail from './src/pages/lecturer/CourseDetail';
 import SessionAttendance from './src/pages/lecturer/SessionAttendance';
@@ -18,6 +20,8 @@ const App: React.FC = () => {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* Student Routes */}
             <Route element={<ProtectedRoute allowedRoles={[UserRole.STUDENT]} />}>

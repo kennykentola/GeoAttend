@@ -1,8 +1,8 @@
 
-export const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1'; // Replace with your Appwrite Endpoint
-export const APPWRITE_PROJECT_ID = 'your-project-id'; // CRITICAL: Replace with your actual Appwrite Project ID
+export const APPWRITE_ENDPOINT = 'https://fra.appwrite.io/v1'; // Replace with your Appwrite Endpoint
+export const APPWRITE_PROJECT_ID = '692e90ec001d05ec5434'; // CRITICAL: Replace with your actual Appwrite Project ID
 
-export const DATABASE_ID = 'attendance-db';
+export const DATABASE_ID = 'uniproject1';
 export const USERS_COLLECTION_ID = 'users';
 export const COURSES_COLLECTION_ID = 'courses';
 export const SESSIONS_COLLECTION_ID = 'sessions';

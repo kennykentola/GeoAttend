@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -73,9 +72,16 @@ const Login: React.FC = () => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
+                Password
+              </label>
+              <div className="text-sm">
+                <Link to="/forgot-password" className="font-semibold text-indigo-600 hover:text-indigo-500">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
             <div className="mt-2">
               <input
                 id="password"

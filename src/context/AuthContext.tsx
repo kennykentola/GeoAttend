@@ -11,6 +11,8 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   checkUserStatus: () => Promise<void>;
+  sendPasswordReset: (email: string) => Promise<void>;
+  resetPassword: (userId: string, secret: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -153,8 +155,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const sendPasswordReset = async (email: string) => {
+    try {
+      // Construct the redirect URL to the reset-password route
+      const redirectUrl = `${window.location.origin}/#/reset-password`;
+      await account.createRecovery(email, redirectUrl);
+    } catch (error) {
+      handleError(error, 'Password Reset Request');
+    }
+  };
+
+  const resetPassword = async (userId: string, secret: string, password: string) => {
+    try {
+      await account.updateRecovery(userId, secret, password);
+    } catch (error) {
+      handleError(error, 'Password Reset Confirmation');
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkUserStatus }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, checkUserStatus, sendPasswordReset, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
