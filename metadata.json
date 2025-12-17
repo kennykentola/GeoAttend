@@ -1,7 +1,8 @@
 {
-  "name": "GeoAttend",
+  "name": "Higher Institution Attendance",
   "description": "Secure, location-based student attendance management system.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "camera"
   ]
 }

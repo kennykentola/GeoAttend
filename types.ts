@@ -1,6 +1,8 @@
+
 export enum UserRole {
   STUDENT = 'student',
   LECTURER = 'lecturer',
+  ADMIN = 'admin',
 }
 
 export interface UserProfile {
@@ -34,4 +36,15 @@ export interface AttendanceRecord {
   studentId: string;
   timestamp: string;
   status: 'present' | 'absent';
+}
+
+export interface LectureNote {
+  $id: string;
+  courseId: string;
+  title: string;
+  fileId: string;
+  fileName: string;
+  mimeType?: string;
+  size?: number;
+  $createdAt: string;
 }

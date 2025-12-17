@@ -12,8 +12,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
-        <div className="text-xl font-semibold text-blue-600 animate-pulse">Loading Auth...</div>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-900">
+        <div className="text-xl font-semibold text-indigo-400 animate-pulse">Authenticating...</div>
       </div>
     );
   }
@@ -24,7 +24,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to their appropriate dashboard if they access a forbidden route
-    const redirectPath = user.role === UserRole.LECTURER ? '/lecturer/dashboard' : '/student/attendance';
+    let redirectPath = '/login';
+    if (user.role === UserRole.ADMIN) redirectPath = '/admin/dashboard';
+    else if (user.role === UserRole.LECTURER) redirectPath = '/lecturer/dashboard';
+    else redirectPath = '/student/attendance';
+    
     return <Navigate to={redirectPath} replace />;
   }
 

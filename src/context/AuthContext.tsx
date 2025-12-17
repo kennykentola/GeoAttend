@@ -7,7 +7,7 @@ import { DATABASE_ID, USERS_COLLECTION_ID } from '../config/constants';
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, forceRole?: UserRole) => Promise<void>;
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   checkUserStatus: () => Promise<void>;
@@ -18,7 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Key for persisting dev mode user
-const DEV_USER_KEY = 'geoattend_dev_user';
+const DEV_USER_KEY = 'hia_dev_user';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -86,17 +86,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUserStatus();
   }, [checkUserStatus]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, forceRole?: UserRole) => {
     setLoading(true);
 
     // --- TEMPORARY BYPASS FOR SPECIFIC USER ---
     // Strictly checking email AND password as requested
     if (email === 'peterkehindeademola@gmail.com' && password === 'kehinde5@') {
+        const role = forceRole || UserRole.LECTURER;
         const mockUser: UserProfile = {
-            $id: 'dev-peter-id',
-            name: 'Peter (Dev)',
+            $id: role === UserRole.STUDENT ? 'dev-peter-student-id' : role === UserRole.ADMIN ? 'dev-admin-id' : 'dev-peter-id',
+            name: role === UserRole.STUDENT ? 'Peter (Dev Student)' : role === UserRole.ADMIN ? 'System Administrator' : 'Peter (Dev)',
             email: email,
-            role: UserRole.LECTURER
+            role: role
         };
         setUser(mockUser);
         localStorage.setItem(DEV_USER_KEY, JSON.stringify(mockUser));
