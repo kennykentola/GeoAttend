@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -22,11 +23,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // Fix: roles is now an array, check for any allowed role
+  const userHasPermission = !allowedRoles || allowedRoles.some(role => user.roles.includes(role));
+
+  if (!userHasPermission) {
     // Redirect to their appropriate dashboard if they access a forbidden route
     let redirectPath = '/login';
-    if (user.role === UserRole.ADMIN) redirectPath = '/admin/dashboard';
-    else if (user.role === UserRole.LECTURER) redirectPath = '/lecturer/dashboard';
+    if (user.roles.includes(UserRole.ADMIN)) redirectPath = '/admin/dashboard';
+    else if (user.roles.includes(UserRole.LECTURER)) redirectPath = '/lecturer/dashboard';
     else redirectPath = '/student/attendance';
     
     return <Navigate to={redirectPath} replace />;

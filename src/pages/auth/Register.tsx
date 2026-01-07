@@ -18,7 +18,8 @@ const Register: React.FC = () => {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
-      if (user.role === UserRole.LECTURER) {
+      // Fix: roles is now an array, check for role inclusion
+      if (user.roles.includes(UserRole.LECTURER)) {
         navigate('/lecturer/dashboard');
       } else {
         navigate('/student/attendance');

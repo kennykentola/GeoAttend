@@ -5,11 +5,30 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+export type Capability = 
+  | 'COURSE_READ' 
+  | 'COURSE_WRITE' 
+  | 'SESSION_CONTROL' 
+  | 'RECORDS_READ' 
+  | 'RECORDS_WRITE' 
+  | 'RECORDS_EXPORT'
+  | 'USER_MANAGEMENT'
+  | 'SYSTEM_TELEMETRY';
+
+export interface RoleDefinition {
+  id: string;
+  label: string;
+  description: string;
+  capabilities: Capability[];
+  isSystem?: boolean;
+}
+
 export interface UserProfile {
   $id: string;
   name: string;
   email: string;
-  role: UserRole;
+  roles: string[]; 
+  lastLogin?: string; 
 }
 
 export interface Course {
@@ -22,12 +41,13 @@ export interface Course {
 export interface AttendanceSession {
   $id: string;
   courseId: string;
-  courseName: string; // Denormalized for display convenience
-  lectureStartTime: string; // ISO date string
-  endTime: string; // ISO date string - Automatic expiration time
+  courseName: string;
+  lectureStartTime: string;
+  endTime: string;
   venueLat: number;
   venueLon: number;
   isActive: boolean;
+  broadcastCode?: string; // New numeric code for easy input
 }
 
 export interface AttendanceRecord {
@@ -36,6 +56,7 @@ export interface AttendanceRecord {
   studentId: string;
   timestamp: string;
   status: 'present' | 'absent';
+  reason?: string;
 }
 
 export interface LectureNote {

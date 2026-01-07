@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -15,9 +16,10 @@ const Login: React.FC = () => {
 
   React.useEffect(() => {
     if (user) {
-      if (user.role === UserRole.ADMIN) {
+      // Fix: user.role is now user.roles array
+      if (user.roles.includes(UserRole.ADMIN)) {
         navigate('/admin/dashboard');
-      } else if (user.role === UserRole.LECTURER) {
+      } else if (user.roles.includes(UserRole.LECTURER)) {
         navigate('/lecturer/dashboard');
       } else {
         navigate('/student/attendance');

@@ -8,8 +8,9 @@ const Home: React.FC = () => {
 
   const getDashboardLink = () => {
       if (!user) return '/login';
-      if (user.role === UserRole.ADMIN) return '/admin/dashboard';
-      if (user.role === UserRole.LECTURER) return '/lecturer/dashboard';
+      // Fix: roles is now an array, check for role inclusion
+      if (user.roles.includes(UserRole.ADMIN)) return '/admin/dashboard';
+      if (user.roles.includes(UserRole.LECTURER)) return '/lecturer/dashboard';
       return '/student/attendance';
   };
 

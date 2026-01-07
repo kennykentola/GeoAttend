@@ -237,7 +237,8 @@ const CourseDetail: React.FC = () => {
   };
 
   const getDownloadUrl = (fileId: string) => {
-      return storage.getFileDownload(STORAGE_BUCKET_ID, fileId).href;
+      // Fix: Removing .href because getFileDownload returns a string in this context
+      return storage.getFileDownload(STORAGE_BUCKET_ID, fileId);
   };
 
   // Rest of existing logic for course and session management

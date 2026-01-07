@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { databases } from '../../config/appwriteConfig';
 import { 
@@ -205,24 +206,47 @@ const AdminDashboard: React.FC = () => {
         
         {/* Telemetry View */}
         {activeTab === 'telemetry' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {[
-                    { label: 'Total Registry', value: stats.users, color: 'text-indigo-600', icon: '👤', desc: 'Enrolled identities' },
-                    { label: 'Academic Streams', value: stats.courses, color: 'text-emerald-600', icon: '📚', desc: 'Available courses' },
-                    { label: 'Active Sessions', value: stats.sessions, color: 'text-amber-600', icon: '🛰️', desc: 'Live spatial nodes' },
-                    { label: 'Registry Logs', value: stats.records, color: 'text-rose-600', icon: '📝', desc: 'Verification events' }
-                ].map((stat, i) => (
-                    <div key={i} className="p-10 rounded-[3rem] bg-white border border-slate-100 shadow-2xl shadow-slate-100/50 flex flex-col justify-between group hover:border-indigo-100 transition-all duration-500">
-                        <div className="flex justify-between items-start">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
-                            <span className="text-2xl group-hover:scale-125 transition-transform duration-500 opacity-20 grayscale">{stat.icon}</span>
+            <div className="space-y-10 animate-fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {[
+                        { label: 'Total Registry', value: stats.users, color: 'text-indigo-600', icon: '👤', desc: 'Enrolled identities' },
+                        { label: 'Academic Streams', value: stats.courses, color: 'text-emerald-600', icon: '📚', desc: 'Available courses' },
+                        { label: 'Active Sessions', value: stats.sessions, color: 'text-amber-600', icon: '🛰️', desc: 'Live spatial nodes' },
+                        { label: 'Registry Logs', value: stats.records, color: 'text-rose-600', icon: '📝', desc: 'Verification events' }
+                    ].map((stat, i) => (
+                        <div key={i} className="p-10 rounded-[3rem] bg-white border border-slate-100 shadow-2xl shadow-slate-100/50 flex flex-col justify-between group hover:border-indigo-100 transition-all duration-500">
+                            <div className="flex justify-between items-start">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
+                                <span className="text-2xl group-hover:scale-125 transition-transform duration-500 opacity-20 grayscale">{stat.icon}</span>
+                            </div>
+                            <div className="mt-8">
+                                <p className={`text-6xl font-black tracking-tighter ${stat.color}`}>{stat.value.toLocaleString()}</p>
+                                <p className="text-[11px] font-medium text-slate-400 mt-2">{stat.desc}</p>
+                            </div>
                         </div>
-                        <div className="mt-8">
-                            <p className={`text-6xl font-black tracking-tighter ${stat.color}`}>{stat.value.toLocaleString()}</p>
-                            <p className="text-[11px] font-medium text-slate-400 mt-2">{stat.desc}</p>
-                        </div>
+                    ))}
+                </div>
+
+                <div className="bg-white rounded-[3.5rem] p-12 border border-slate-100 shadow-2xl">
+                    <h3 className="text-2xl font-black mb-12">Registry Load Vector (Last 7 Days)</h3>
+                    <div className="flex items-end justify-between h-64 gap-4 px-6 border-b border-slate-100">
+                        {[45, 65, 32, 85, 70, 95, 55].map((h, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-4 group">
+                                <div 
+                                    className="w-full bg-indigo-500/10 group-hover:bg-indigo-600 rounded-t-2xl transition-all duration-500 relative cursor-pointer"
+                                    style={{ height: `${h}%` }}
+                                >
+                                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {h * 12} Logs
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-2">
+                                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}
+                                </span>
+                            </div>
+                        ))}
                     </div>
-                ))}
+                </div>
             </div>
         )}
 

@@ -1,117 +1,101 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Models, ID } from 'appwrite';
 import { account, databases } from '../config/appwriteConfig';
-import { ID, AppwriteException } from 'appwrite';
-import { UserProfile, UserRole } from '../../types';
 import { DATABASE_ID, USERS_COLLECTION_ID } from '../config/constants';
+// @ts-ignore
+import { UserProfile, UserRole } from '../../types';
 
 interface AuthContextType {
   user: UserProfile | null;
   loading: boolean;
-  login: (email: string, password: string, forceRole?: UserRole) => Promise<void>;
+  login: (email: string, password: string, devRole?: UserRole) => Promise<void>;
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
-  checkUserStatus: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   resetPassword: (userId: string, secret: string, password: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Key for persisting dev mode user
-const DEV_USER_KEY = 'hia_dev_user';
+const ensureArray = (val: any): string[] => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val) return [val];
+  return [];
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleError = (error: any, action: string) => {
-    console.error(`${action} failed:`, error);
-    if (error instanceof TypeError && error.message === 'Failed to fetch') {
-      throw new Error(`Connection failed. Please check your Appwrite Project ID in src/config/constants.ts and ensure the endpoint is reachable.`);
-    }
-    if (error instanceof AppwriteException) {
-      throw new Error(error.message);
-    }
-    throw error;
-  };
-
-  const fetchUserProfile = useCallback(async (userId: string, name: string, email: string) => {
+  const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
     try {
-      const doc = await databases.getDocument(
-        DATABASE_ID,
-        USERS_COLLECTION_ID,
-        userId
-      );
-      
-      setUser({
+      const doc = await databases.getDocument(DATABASE_ID, USERS_COLLECTION_ID, userId);
+      return {
         $id: doc.$id,
         name: doc.name,
         email: doc.email,
-        role: doc.role as UserRole,
-      });
+        roles: ensureArray(doc.roles || doc.role),
+      };
     } catch (error) {
-      console.warn("User profile not found in database. Ensure the 'users' collection exists and permissions are set.", error);
-      // Fallback if profile doesn't exist but auth does (should not happen in normal flow)
-      setUser({
-        $id: userId,
-        name: name,
-        email: email,
-        role: UserRole.STUDENT // Default fallback
-      });
+      console.error('Error fetching user profile:', error);
+      return null;
     }
-  }, []);
+  };
 
-  const checkUserStatus = useCallback(async () => {
-    // 1. Check for Dev Mode User Bypass
-    const devUserJson = localStorage.getItem(DEV_USER_KEY);
-    if (devUserJson) {
-      setUser(JSON.parse(devUserJson));
-      setLoading(false);
-      return;
-    }
-
-    // 2. Normal Appwrite Check
+  const refreshUser = async () => {
     try {
-      const accountDetails = await account.get();
-      await fetchUserProfile(accountDetails.$id, accountDetails.name, accountDetails.email);
+      const session = await account.get();
+      const profile = await fetchUserProfile(session.$id);
+      if (profile) {
+        setUser(profile);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
-      // 401 Unauthorized is expected if no session exists
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }, [fetchUserProfile]);
+  };
 
   useEffect(() => {
-    checkUserStatus();
-  }, [checkUserStatus]);
+    refreshUser();
+  }, []);
 
-  const login = async (email: string, password: string, forceRole?: UserRole) => {
+  const login = async (email: string, password: string, devRole?: UserRole) => {
     setLoading(true);
-
-    // --- TEMPORARY BYPASS FOR SPECIFIC USER ---
-    // Strictly checking email AND password as requested
-    if (email === 'peterkehindeademola@gmail.com' && password === 'kehinde5@') {
-        const role = forceRole || UserRole.LECTURER;
-        const mockUser: UserProfile = {
-            $id: role === UserRole.STUDENT ? 'dev-peter-student-id' : role === UserRole.ADMIN ? 'dev-admin-id' : 'dev-peter-id',
-            name: role === UserRole.STUDENT ? 'Peter (Dev Student)' : role === UserRole.ADMIN ? 'System Administrator' : 'Peter (Dev)',
-            email: email,
-            role: role
-        };
-        setUser(mockUser);
-        localStorage.setItem(DEV_USER_KEY, JSON.stringify(mockUser));
-        setLoading(false);
-        return;
-    }
-    // ------------------------------------------
-
     try {
       await account.createEmailPasswordSession(email, password);
-      await checkUserStatus();
+      const session = await account.get();
+      let profile = await fetchUserProfile(session.$id);
+      
+      if (!profile && devRole) {
+        // Create profile on the fly for dev/bypass if it doesn't exist
+        const newDoc = await databases.createDocument(
+          DATABASE_ID,
+          USERS_COLLECTION_ID,
+          session.$id,
+          {
+            name: session.name || 'Bypass User',
+            email: session.email,
+            roles: [devRole],
+          }
+        );
+        profile = {
+          $id: newDoc.$id,
+          name: newDoc.name,
+          email: newDoc.email,
+          roles: [devRole],
+        };
+      }
+      
+      setUser(profile);
     } catch (error) {
+      throw error;
+    } finally {
       setLoading(false);
-      handleError(error, 'Login');
     }
   };
 
@@ -119,13 +103,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const userId = ID.unique();
-      // 1. Create Account
       await account.create(userId, email, password, name);
-
-      // 2. Login immediately
       await account.createEmailPasswordSession(email, password);
-
-      // 3. Create User Profile
+      
       await databases.createDocument(
         DATABASE_ID,
         USERS_COLLECTION_ID,
@@ -133,49 +113,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         {
           name,
           email,
-          role
+          roles: [role],
         }
       );
-
-      await checkUserStatus();
+      
+      setUser({
+        $id: userId,
+        name,
+        email,
+        roles: [role],
+      });
     } catch (error) {
+      throw error;
+    } finally {
       setLoading(false);
-      handleError(error, 'Registration');
     }
   };
 
   const logout = async () => {
-    // Clear dev user if exists
-    localStorage.removeItem(DEV_USER_KEY);
-    
+    setLoading(true);
     try {
       await account.deleteSession('current');
+      setUser(null);
     } catch (error) {
-      console.warn("Logout warning (possibly dev mode):", error);
+      console.error('Logout error:', error);
+    } finally {
+      setLoading(false);
     }
-    setUser(null);
   };
 
   const sendPasswordReset = async (email: string) => {
-    try {
-      // Construct the redirect URL to the reset-password route
-      const redirectUrl = `${window.location.origin}/#/reset-password`;
-      await account.createRecovery(email, redirectUrl);
-    } catch (error) {
-      handleError(error, 'Password Reset Request');
-    }
+    // Note: This requires a properly configured hostname in Appwrite
+    await account.createRecovery(email, `${window.location.origin}/#/reset-password`);
   };
 
   const resetPassword = async (userId: string, secret: string, password: string) => {
-    try {
-      await account.updateRecovery(userId, secret, password);
-    } catch (error) {
-      handleError(error, 'Password Reset Confirmation');
-    }
+    await account.updateRecovery(userId, secret, password, password);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, checkUserStatus, sendPasswordReset, resetPassword }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, sendPasswordReset, resetPassword, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
