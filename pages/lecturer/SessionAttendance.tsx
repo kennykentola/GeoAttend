@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import client, { databases } from '../../config/appwriteConfig';
 import { DATABASE_ID, SESSIONS_COLLECTION_ID, RECORDS_COLLECTION_ID, USERS_COLLECTION_ID } from '../../config/constants';
-import { AttendanceSession, AttendanceRecord, UserProfile, UserRole } from '../../../types';
+import { AttendanceSession, AttendanceRecord, UserProfile, UserRole } from '../../types';
 import { Query, ID } from 'appwrite';
 import { useToast } from '../../context/ToastContext';
 // @ts-ignore
@@ -20,7 +21,7 @@ const SessionAttendance: React.FC = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isTogglingSession, setIsTogglingSession] = useState(false);
   
-  // Selection State
+  // Selection State for Bulk Actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
@@ -55,7 +56,7 @@ const SessionAttendance: React.FC = () => {
   }, [allStudents, records]);
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === allStudents.length) {
+    if (selectedIds.size === allStudents.length && allStudents.length > 0) {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(allStudents.map(s => s.$id)));
@@ -71,20 +72,27 @@ const SessionAttendance: React.FC = () => {
 
   const handleBulkAction = async (targetStatus: 'present' | 'absent') => {
     if (!sessionId || selectedIds.size === 0) return;
+    
+    const confirm = window.confirm(`Update ${selectedIds.size} identities to "${targetStatus}"?`);
+    if (!confirm) return;
+
     setIsBulkProcessing(true);
     let successCount = 0;
     
     addToast(`Syncing batch of ${selectedIds.size} records...`, 'info');
 
     try {
-      for (const studentId of Array.from(selectedIds)) {
+      const selectedArray = Array.from(selectedIds);
+      // We process sequentially to avoid potential rate limits on database operations
+      for (const studentId of selectedArray) {
         const currentRecord = records.find(r => r.studentId === studentId);
         try {
           if (currentRecord) {
             if (currentRecord.status !== targetStatus) {
               await databases.updateDocument(DATABASE_ID, RECORDS_COLLECTION_ID, currentRecord.$id, {
                 status: targetStatus,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                reason: 'Bulk Correction'
               });
               successCount++;
             }
@@ -93,7 +101,8 @@ const SessionAttendance: React.FC = () => {
               sessionId,
               studentId,
               status: targetStatus,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              reason: 'Bulk Correction'
             });
             successCount++;
           }
@@ -181,12 +190,13 @@ const SessionAttendance: React.FC = () => {
       setRecords(recordsResponse.documents.map(doc => ({
           $id: doc.$id, sessionId: doc.sessionId, studentId: doc.studentId, timestamp: doc.timestamp, status: doc.status as 'present' | 'absent', reason: doc.reason
       })));
-      const studentsResponse = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [Query.equal('role', UserRole.STUDENT), Query.limit(100)]);
+      const studentsResponse = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [Query.limit(100)]);
       
-      // Fixed: mapping role to roles array to match UserProfile type
-      const fetchedStudents = studentsResponse.documents.map(doc => ({
-          $id: doc.$id, name: doc.name, email: doc.email, roles: [doc.role as UserRole]
-      })) as UserProfile[];
+      const fetchedStudents = studentsResponse.documents
+        .filter(doc => (doc.roles && doc.roles.includes(UserRole.STUDENT)) || doc.role === UserRole.STUDENT)
+        .map(doc => ({
+          $id: doc.$id, name: doc.name, email: doc.email, roles: doc.roles || [doc.role]
+        })) as UserProfile[];
       setAllStudents(fetchedStudents);
 
       // Initialize live feed with recent records
@@ -240,12 +250,12 @@ const SessionAttendance: React.FC = () => {
               await databases.updateDocument(DATABASE_ID, RECORDS_COLLECTION_ID, currentRecord.$id, { 
                 status: targetStatus, 
                 timestamp: new Date().toISOString(),
-                reason: reason
+                reason: reason || 'Manual Correction'
               });
               addToast(`Updated: ${student.name} set to ${targetStatus}`, 'success');
           } else {
               await databases.createDocument(DATABASE_ID, RECORDS_COLLECTION_ID, ID.unique(), {
-                  sessionId, studentId: student.$id, status: targetStatus, timestamp: new Date().toISOString(), reason: reason
+                  sessionId, studentId: student.$id, status: targetStatus, timestamp: new Date().toISOString(), reason: reason || 'Manual Correction'
               });
               addToast(`Identity ${student.name} synchronized to ${targetStatus}`, 'success');
           }
@@ -321,17 +331,17 @@ const SessionAttendance: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950">
         <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
         <p className="mt-4 text-[10px] font-black uppercase text-indigo-400 tracking-[0.3em] animate-pulse">Synchronizing Terminal</p>
     </div>
   );
 
   if (!session) return (
-    <div className="p-8 text-center text-rose-500 bg-white h-screen flex flex-col items-center justify-center">
-        <h2 className="text-3xl font-black mb-4 tracking-tighter">Handshake Error</h2>
-        <p className="text-slate-400 mb-8 max-w-sm">The node identity requested is currently unreachable or purged from the registry.</p>
-        <button onClick={() => navigate('/lecturer/dashboard')} className="px-12 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl">Return to Portal</button>
+    <div className="p-8 text-center text-rose-500 bg-slate-950 h-screen flex flex-col items-center justify-center">
+        <h2 className="text-3xl font-black mb-4 tracking-tighter text-white">Handshake Error</h2>
+        <p className="text-slate-400 mb-8 max-w-sm text-sm">The node identity requested is currently unreachable or purged from the registry.</p>
+        <button onClick={() => navigate('/lecturer/dashboard')} className="px-12 py-4 bg-white text-slate-950 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl">Return to Portal</button>
     </div>
   );
 
@@ -513,7 +523,7 @@ const SessionAttendance: React.FC = () => {
          </div>
       </main>
 
-      {/* Bulk HUD */}
+      {/* Bulk HUD - Visible only when entities are staged */}
       {selectedIds.size > 0 && (
         <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-40 animate-slide-up w-full max-w-2xl px-6">
             <div className="bg-slate-900/95 backdrop-blur-3xl border border-white/10 rounded-[3rem] px-10 py-7 flex items-center justify-between shadow-2xl ring-1 ring-white/10">
@@ -530,7 +540,7 @@ const SessionAttendance: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Manual Revision Modal */}
       {isEditModalOpen && editingData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/50 backdrop-blur-md animate-fade-in" onClick={() => setIsEditModalOpen(false)}>
             <div className="bg-white rounded-[3.5rem] p-12 w-full max-w-md shadow-2xl border border-slate-100 animate-slide-up" onClick={e => e.stopPropagation()}>
@@ -546,6 +556,34 @@ const SessionAttendance: React.FC = () => {
                     <div><label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 block">Institutional Note</label><input type="text" value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="Entry justification..." className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-medium outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"/></div>
                     <div><label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 block">Registry Marker (Local Time)</label><input type="datetime-local" value={editTimestamp} onChange={(e) => setEditTimestamp(e.target.value)} className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-mono font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"/></div>
                     <div className="flex gap-4 pt-6"><button onClick={() => setIsEditModalOpen(false)} className="flex-1 py-5 text-[10px] font-black uppercase text-slate-400 font-black">Discard</button><button onClick={handleSaveEdit} className="flex-[2] bg-slate-900 text-white font-black py-5 rounded-[2rem] text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:bg-indigo-600 active:scale-95">Commit Registry Update</button></div>
+                </div>
+            </div>
+        </div>
+      )}
+      
+      {/* Broadcast QR Modal */}
+      {showQrModal && session && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-3xl animate-fade-in" onClick={() => setShowQrModal(false)}>
+            <div className="bg-white rounded-[4.5rem] p-16 flex flex-col items-center max-w-md w-full shadow-2xl border border-white/20 animate-slide-up relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-indigo-50 rounded-full blur-[80px]"></div>
+                
+                <div className="relative z-10 flex flex-col items-center w-full">
+                    <div className="bg-indigo-600 p-4 rounded-[2.5rem] mb-10 shadow-2xl shadow-indigo-600/30 rotate-3 group-hover:rotate-0 transition-all">
+                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01"/></svg>
+                    </div>
+                    <h3 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Spatial Node</h3>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] mb-12 text-center leading-relaxed">Verification Broadcast Active</p>
+                    
+                    <div className="p-6 bg-white rounded-[3.5rem] border-[3px] border-indigo-50 shadow-inner mb-12 transform hover:scale-105 transition-all duration-500 w-full flex justify-center">
+                        <canvas ref={qrCanvasRef} className="w-full h-auto max-w-[240px]"></canvas>
+                    </div>
+                    
+                    <div className="w-full bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 flex flex-col items-center gap-3 mb-10">
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em]">Identity Token</span>
+                        <span className="text-2xl font-black font-mono text-indigo-600 select-all tracking-wider">{session.$id}</span>
+                    </div>
+
+                    <button onClick={() => setShowQrModal(false)} className="w-full py-6 bg-slate-950 text-white font-black text-[11px] uppercase tracking-widest rounded-3xl hover:bg-indigo-600 transition-all shadow-2xl active:scale-95">Deactivate Broadcast</button>
                 </div>
             </div>
         </div>

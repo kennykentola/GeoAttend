@@ -77,11 +77,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           authError.message?.toLowerCase().includes('fetch') || 
           authError.name === 'FetchError' || 
           authError.code === 0 ||
-          authError.message?.toLowerCase().includes('network error');
+          authError.message?.toLowerCase().includes('network error') ||
+          authError.message?.toLowerCase().includes('blocked');
 
-        // CRITICAL BYPASS: Handle specific developer credentials immediately if blocked
+        // CRITICAL BYPASS: If developer credentials and network fails/blocked, allow access via local simulation
         if (isDev && isNetworkError) {
-          console.warn("Handshake Failed: Developer Bypass active. Simulating node...");
+          console.warn("Handshake Failed: Developer Bypass active. Domain likely not whitelisted.");
           setUser({
             $id: 'dev-bypass-node',
             name: 'Developer Identity',
@@ -94,7 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (isNetworkError) {
-          throw new Error('Network Handshake Failed: Domain likely not whitelisted as a Web Platform in Appwrite.');
+          throw new Error('Network Handshake Failed: The request was blocked. Ensure your Appwrite Project ID is correct and your domain is added as a Web Platform in the Appwrite Console.');
         }
         throw authError;
       }
@@ -111,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(identity);
     } catch (error: any) {
+      console.error("Authentication Error Details:", error.message);
       throw error;
     } finally {
       setLoading(false);
