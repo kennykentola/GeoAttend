@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +20,7 @@ const StudentDashboard: React.FC = () => {
   const [stats, setStats] = useState({ present: 0, absent: 0, total: 0 });
   const [totalRecordsInRegistry, setTotalRecordsInRegistry] = useState(0);
 
-  // Filter States
+  // Filter States for Historical Log
   const [courseFilter, setCourseFilter] = useState('all');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -60,7 +59,7 @@ const StudentDashboard: React.FC = () => {
     if (!user?.$id) return;
 
     try {
-      // 1. Fetch Courses
+      // 1. Fetch Courses for filter dropdown
       let courseList: Course[] = [];
       if (user.$id === 'dev-bypass-node') {
         courseList = [
@@ -73,7 +72,7 @@ const StudentDashboard: React.FC = () => {
       }
       setCourses(courseList);
 
-      // 2. Fetch Records
+      // 2. Fetch Initial Batch of Records
       await fetchHistoryBatch(0);
     } catch (e) {
       console.error(e);
@@ -87,12 +86,13 @@ const StudentDashboard: React.FC = () => {
     if (!user?.$id) return;
 
     if (user.$id === 'dev-bypass-node') {
-        const mock = [
+        // Fixed: explicitly type mock records to resolve status assignment error
+        const mock: (AttendanceRecord & { sessionName: string; courseId: string })[] = [
           { $id: 'r1', sessionId: 's1', studentId: 'u1', status: 'present', timestamp: new Date().toISOString(), sessionName: 'Distributed Systems', courseId: 'c1' },
           { $id: 'r2', sessionId: 's2', studentId: 'u1', status: 'absent', timestamp: new Date(Date.now() - 86400000).toISOString(), sessionName: 'Computer Architecture', courseId: 'c2' }
         ];
         setRecords(offset === 0 ? mock : [...records, ...mock]);
-        setTotalRecordsInRegistry(37); // Simulated total
+        setTotalRecordsInRegistry(37);
         return;
     }
 
@@ -106,7 +106,7 @@ const StudentDashboard: React.FC = () => {
       
       setTotalRecordsInRegistry(res.total);
 
-      // Fetch active sessions to map names - we fetch a larger chunk to ensure we have context
+      // Fetch sessions to map names - we fetch context for enrichment
       const sessionsRes = await databases.listDocuments(DATABASE_ID, SESSIONS_COLLECTION_ID, [Query.limit(100)]);
       const sessionsMap = new Map<string, { name: string; courseId: string }>(
         sessionsRes.documents.map((s: any) => [s.$id, { name: s.courseName, courseId: s.courseId }])
@@ -116,7 +116,7 @@ const StudentDashboard: React.FC = () => {
         const session = sessionsMap.get(doc.sessionId);
         return {
           ...doc,
-          sessionName: session?.name || 'Unknown Session',
+          sessionName: session?.name || 'Academic Session',
           courseId: session?.courseId || 'unknown'
         };
       }) as any;
@@ -190,7 +190,7 @@ const StudentDashboard: React.FC = () => {
               </section>
           )}
 
-          {/* Aggregate HUD */}
+          {/* Aggregate HUD - Summary of Attendance */}
           <section className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-2 bg-white rounded-[3rem] p-10 border border-slate-100 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
                 <div className="flex items-center gap-6">
@@ -257,7 +257,7 @@ const StudentDashboard: React.FC = () => {
             </section>
           )}
 
-          {/* Historical Table and Filters */}
+          {/* Historical Log Section */}
           <section className="space-y-8">
             <div className="bg-white rounded-[3.5rem] p-10 border border-slate-100 shadow-2xl space-y-10">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
@@ -266,13 +266,14 @@ const StudentDashboard: React.FC = () => {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-3">Registry Temporal Records</p>
                     </div>
                     
+                    {/* Filtering Interface */}
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="space-y-2">
                             <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Stream Filter</label>
                             <select 
                                 value={courseFilter} 
                                 onChange={(e) => setCourseFilter(e.target.value)}
-                                className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                                className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/5 transition-all appearance-none cursor-pointer"
                             >
                                 <option value="all">All Courses</option>
                                 {courses.map(c => <option key={c.$id} value={c.$id}>{c.name}</option>)}
@@ -312,7 +313,7 @@ const StudentDashboard: React.FC = () => {
                         <tbody className="divide-y divide-slate-50 font-medium">
                             {filteredRecords.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="px-8 py-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs">
+                                    <td colSpan={4} className="px-8 py-20 text-center text-slate-300 font-bold uppercase tracking-widest text-xs italic">
                                         No records synchronized within this temporal vector
                                     </td>
                                 </tr>
@@ -328,8 +329,8 @@ const StudentDashboard: React.FC = () => {
                                           </td>
                                           <td className="px-8 py-6">
                                               <div className="flex flex-col">
-                                                  <span className="text-slate-600 text-xs">{new Date(record.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                  <span className="text-[10px] text-slate-400 font-bold">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                  <span className="text-slate-600 text-xs font-bold">{new Date(record.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                  <span className="text-[10px] text-slate-400 font-bold opacity-60">{new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                               </div>
                                           </td>
                                           <td className="px-8 py-6">
@@ -348,16 +349,16 @@ const StudentDashboard: React.FC = () => {
                                   ))}
                                   {records.length < totalRecordsInRegistry && (
                                     <tr>
-                                      <td colSpan={4} className="px-8 py-10 text-center">
+                                      <td colSpan={4} className="px-8 py-10 text-center bg-slate-50/30">
                                         <button 
                                           onClick={handleLoadMore}
                                           disabled={loadingMore}
-                                          className="px-12 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl shadow-indigo-100 transition-all disabled:opacity-50 flex items-center gap-3 mx-auto"
+                                          className="px-12 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl uppercase tracking-widest text-[11px] shadow-xl shadow-indigo-100 transition-all disabled:opacity-50 flex items-center gap-3 mx-auto active:scale-95"
                                         >
                                           {loadingMore && <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>}
-                                          {loadingMore ? 'Syncing...' : 'Load More Records'}
+                                          {loadingMore ? 'Syncing registry...' : 'Load More Records'}
                                         </button>
-                                        <p className="mt-4 text-[9px] font-black uppercase text-slate-300 tracking-[0.2em]">Showing {records.length} of {totalRecordsInRegistry} entries</p>
+                                        <p className="mt-4 text-[9px] font-black uppercase text-slate-300 tracking-[0.2em]">Displaying {records.length} of {totalRecordsInRegistry} entries</p>
                                       </td>
                                     </tr>
                                   )}

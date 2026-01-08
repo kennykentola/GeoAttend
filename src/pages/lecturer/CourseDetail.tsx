@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { databases, functions, storage } from '../../config/appwriteConfig';
@@ -48,12 +47,13 @@ const CourseDetail: React.FC = () => {
             USERS_COLLECTION_ID,
             [Query.equal('role', 'student'), Query.limit(100)]
         );
+        // Fixed mapping to roles array to match UserProfile type
         const mappedStudents = response.documents.map(doc => ({
             $id: doc.$id,
             name: doc.name,
             email: doc.email,
-            role: doc.role
-        })) as UserProfile[];
+            roles: [doc.role]
+        })) as unknown as UserProfile[];
         setStudents(mappedStudents);
     } catch (error: any) {
         console.error("Failed to fetch students", error);

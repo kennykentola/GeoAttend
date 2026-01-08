@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Models, ID } from 'appwrite';
 import { account, databases } from '../config/appwriteConfig';
@@ -147,8 +146,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await account.createRecovery(email, `${window.location.origin}/#/reset-password`);
   };
 
+  // Fixed: account.updateRecovery expects 3 arguments in this SDK version
   const resetPassword = async (userId: string, secret: string, password: string) => {
-    await account.updateRecovery(userId, secret, password, password);
+    await account.updateRecovery(userId, secret, password);
   };
 
   return (

@@ -173,34 +173,6 @@ const Home: React.FC = () => {
            </div>
         </section>
 
-        {/* System Trust Section */}
-        <section className="py-32 px-6 bg-slate-950 text-white relative">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(79,70,229,0.15),transparent_70%)]"></div>
-            <div className="max-w-7xl mx-auto relative z-10 text-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-400 mb-10">Infrastructure Stack</p>
-                <h3 className="text-4xl md:text-5xl font-black tracking-tighter mb-20 leading-tight">Secured by Industry-Leading <br/>Institutional Technology.</h3>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                    <div className="flex flex-col items-center gap-4">
-                        <span className="text-2xl font-black tracking-tighter">APPWRITE.</span>
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-300">Core Engine</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-4">
-                        <span className="text-2xl font-black tracking-tighter">GPS/GLO.</span>
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-300">Spatial Node</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-4">
-                        <span className="text-2xl font-black tracking-tighter">AES-256.</span>
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-300">Security Layer</span>
-                    </div>
-                    <div className="flex flex-col items-center gap-4">
-                        <span className="text-2xl font-black tracking-tighter">REACT.</span>
-                        <span className="text-[8px] font-bold uppercase tracking-widest text-indigo-300">Interface</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         {/* Footer */}
         <footer className="py-20 px-8 bg-white border-t border-slate-50 relative">
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-12">

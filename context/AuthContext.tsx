@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Models, ID } from 'appwrite';
 import { account, databases } from '../config/appwriteConfig';
@@ -78,12 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           authError.code === 0 ||
           authError.message?.toLowerCase().includes('network error');
 
-        // CRITICAL BYPASS: If developer credentials and network fails, let them in anyway
+        // CRITICAL BYPASS: Handle specific developer credentials immediately if blocked
         if (isDev && isNetworkError) {
-          console.warn("Handshake Failed: Developer Bypass active. Simulating local node...");
+          console.warn("Handshake Failed: Developer Bypass active. Simulating node...");
           setUser({
             $id: 'dev-bypass-node',
-            name: 'Developer Node',
+            name: 'Developer Identity',
             email: email,
             roles: devRole ? [devRole] : [UserRole.ADMIN],
             lastLogin: new Date().toISOString()
@@ -93,54 +94,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (isNetworkError) {
-          throw new Error('Network Handshake Failed: The request was blocked. Ensure your Appwrite Project ID is correct and your domain is added as a Web Platform in the Appwrite Console.');
+          throw new Error('Network Handshake Failed: Domain likely not whitelisted as a Web Platform in Appwrite.');
         }
-
-        // If it's a dev bypass and account is missing (401/404), try to create it
-        if (devRole && (authError.code === 401 || authError.code === 404)) {
-          console.log("Dev Bypass: Identity missing. Establishing on-demand...");
-          try {
-            const safeId = email.replace(/[^a-zA-Z0-9]/g, '').slice(0, 36);
-            await account.create(safeId, email, password, "Developer Identity");
-            await account.createEmailPasswordSession(email, password);
-          } catch (createErr: any) {
-             if (createErr.code !== 409) throw createErr;
-             await account.createEmailPasswordSession(email, password);
-          }
-        } else {
-          throw authError;
-        }
+        throw authError;
       }
 
       const session = await account.get();
-      const timestamp = new Date().toISOString();
-      
-      try {
-        await databases.updateDocument(DATABASE_ID, USERS_COLLECTION_ID, session.$id, { lastLogin: timestamp });
-      } catch (e) {
-        if (devRole) {
-          try {
-            await databases.createDocument(DATABASE_ID, USERS_COLLECTION_ID, session.$id, {
-                name: session.name || "Bypass User",
-                email: session.email,
-                roles: [devRole],
-                lastLogin: timestamp
-            });
-          } catch (dbErr) {
-            console.warn("Registry sync deferred.");
-          }
-        }
-      }
-
       const profile = await fetchUserProfile(session.$id);
-      setUser(profile || { 
+      
+      const identity = profile || { 
         $id: session.$id, 
         name: session.name, 
         email: session.email, 
         roles: devRole ? [devRole] : [] 
-      });
+      };
+      
+      setUser(identity);
     } catch (error: any) {
-      console.error("Authentication Error Details:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -154,29 +124,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await account.create(userId, email, password, name);
       await account.createEmailPasswordSession(email, password);
       
-      const now = new Date().toISOString();
-      try {
-        await databases.createDocument(
-          DATABASE_ID,
-          USERS_COLLECTION_ID,
-          userId,
-          {
-            name,
-            email,
-            roles: [role],
-            lastLogin: now,
-          }
-        );
-      } catch (e) {
-        console.warn("Database record creation failed.");
-      }
+      await databases.createDocument(DATABASE_ID, USERS_COLLECTION_ID, userId, {
+        name,
+        email,
+        roles: [role],
+        lastLogin: new Date().toISOString(),
+      });
       
       setUser({
         $id: userId,
         name,
         email,
         roles: [role],
-        lastLogin: now,
+        lastLogin: new Date().toISOString(),
       });
     } catch (error) {
       throw error;
@@ -202,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const resetPassword = async (userId: string, secret: string, password: string) => {
-    await account.updateRecovery(userId, secret, password, password);
+    await account.updateRecovery(userId, secret, password);
   };
 
   return (

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import client, { databases } from '../../config/appwriteConfig';
@@ -183,9 +182,11 @@ const SessionAttendance: React.FC = () => {
           $id: doc.$id, sessionId: doc.sessionId, studentId: doc.studentId, timestamp: doc.timestamp, status: doc.status as 'present' | 'absent', reason: doc.reason
       })));
       const studentsResponse = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [Query.equal('role', UserRole.STUDENT), Query.limit(100)]);
+      
+      // Fixed: mapping role to roles array to match UserProfile type
       const fetchedStudents = studentsResponse.documents.map(doc => ({
-          $id: doc.$id, name: doc.name, email: doc.email, role: doc.role as UserRole
-      }));
+          $id: doc.$id, name: doc.name, email: doc.email, roles: [doc.role as UserRole]
+      })) as UserProfile[];
       setAllStudents(fetchedStudents);
 
       // Initialize live feed with recent records
@@ -498,7 +499,7 @@ const SessionAttendance: React.FC = () => {
                                     </td>
                                     <td className="py-8 px-4 text-right">
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => openEditModal(student, record || null)} className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm active:scale-95"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                                            <button onClick={() => openEditModal(student, record || null)} className="p-3 rounded-2xl bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm active:scale-95"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
                                             <button disabled={isProcessing || record?.status === 'present'} onClick={() => handleToggleAttendance(student, record, 'present')} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${record?.status === 'present' ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-white border-slate-100 text-slate-400 hover:text-emerald-600 hover:border-emerald-100'}`}>Present</button>
                                             <button disabled={isProcessing || record?.status === 'absent'} onClick={() => handleToggleAttendance(student, record, 'absent')} className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${record?.status === 'absent' ? 'bg-rose-600 border-rose-600 text-white shadow-lg shadow-rose-100' : 'bg-white border-slate-100 text-slate-400 hover:text-rose-600 hover:border-rose-100'}`}>Absent</button>
                                         </div>
@@ -523,7 +524,7 @@ const SessionAttendance: React.FC = () => {
                 <div className="flex gap-4">
                     <button onClick={() => handleBulkAction('present')} disabled={isBulkProcessing} className="px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl active:scale-95">Set Present</button>
                     <button onClick={() => handleBulkAction('absent')} disabled={isBulkProcessing} className="px-10 py-4 bg-rose-600 hover:bg-rose-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl active:scale-95">Set Absent</button>
-                    <button onClick={() => setSelectedIds(new Set())} className="p-3 text-slate-500 hover:text-white transition-colors"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    <button onClick={() => setSelectedIds(new Set())} className="p-3 text-slate-500 hover:text-white transition-colors"><svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
                 </div>
             </div>
         </div>

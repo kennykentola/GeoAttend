@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import client, { databases } from '../../config/appwriteConfig';
@@ -181,9 +180,11 @@ const SessionAttendance: React.FC = () => {
           $id: doc.$id, sessionId: doc.sessionId, studentId: doc.studentId, timestamp: doc.timestamp, status: doc.status as 'present' | 'absent'
       })));
       const studentsResponse = await databases.listDocuments(DATABASE_ID, USERS_COLLECTION_ID, [Query.equal('role', UserRole.STUDENT), Query.limit(100)]);
+      
+      // Fixed: mapping role to roles array to match UserProfile type
       setAllStudents(studentsResponse.documents.map(doc => ({
-          $id: doc.$id, name: doc.name, email: doc.email, role: doc.role as UserRole
-      })));
+          $id: doc.$id, name: doc.name, email: doc.email, roles: [doc.role as UserRole]
+      })) as unknown as UserProfile[]);
     } catch (error) { addToast("Terminal Error: Resource sync failed.", 'error'); }
     finally { setLoading(false); }
   };
